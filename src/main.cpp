@@ -13,3 +13,18 @@ int main(int argc, char **argv) {
 
   return 0;
 }
+
+int debugMain(int argc, char **argv) {
+  captureSource *cam1 = setupCameraSource(argv[1]);
+
+  while (true)
+  {
+    cam1->cap.read(cam1->frame);
+    debugFaceDetection(cam1->frame);
+    cv::imshow("X", cam1->frame);
+
+    cv::waitKey(10);
+  }
+
+  return 0;
+}

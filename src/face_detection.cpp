@@ -1,45 +1,74 @@
 #include <camera_ctl.hpp>
 
-cv::Rect selectLargestFace(std::vector<cv::Rect> faces) {
-  cv::Rect largest = faces.at(0);
-  for (int i = 1; i < faces.size(); i++)
-  {
-    cv::Rect face = faces.at(i);
+typedef struct {
+  cv::Rect outline;
+  int confidence;
+} detectedFace;
 
-    if (face.area() > largest.area())
-      largest = face;
+typedef struct {
+  std::vector<detectedFace> profile;
+  std::vector<detectedFace> frontal;
+} frameFaces;
+
+cv::CascadeClassifier frontalFaceClassifier("./haarcascade_frontalface_default.xml");
+cv::CascadeClassifier profileFaceClassifier("./haarcascade_profileface.xml");
+
+void detectFaces(cv::Mat frame, std::vector<detectedFace> *faces, cv::CascadeClassifier classifier) {
+  std::vector<cv::Rect> faceRects;
+  std::vector<int> numObjects;
+  classifier.detectMultiScale(frame, faceRects, numObjects);
+
+  for (int i = 0; i < faceRects.size(); i++) {
+    cv::Rect faceRect = faceRects.at(i);
+    detectedFace faceEl;
+    faceEl.outline = faceRect;
+    faceEl.confidence = numObjects.at(i);
+    faces->push_back(faceEl);
   }
-  return largest;
 }
 
-int identifyFrontalFace(cv::Mat frame) {
-  cv::CascadeClassifier faceCascade("./haarcascade_frontalface_default.xml");
-  cv::CascadeClassifier eyeCascade("./haarcascade_eye.xml");
-  cv::Mat gray;
+frameFaces identifyFrameFaces(cv::Mat frame) {
+  frameFaces faces;
 
+  cv::Mat gray;
   cv::cvtColor(frame, gray, CV_BGR2GRAY);
 
-  std::vector<cv::Rect> faces;
-  faceCascade.detectMultiScale(gray, faces);
+  detectFaces(gray, &faces.frontal, frontalFaceClassifier);
+  detectFaces(gray, &faces.profile, profileFaceClassifier);
 
-  if (faces.size() == 0)
-    return 0;
+  return faces;
+}
 
-  cv::Rect faceRect = selectLargestFace(faces);
-  cv::rectangle(frame, faceRect, cv::Scalar(255, 0, 0));
+int getLargestFaceConfidence(std::vector<detectedFace> faces) {
+  int index = faces.size() - 1;
 
-  cv::Mat face(gray, faceRect);
-  std::vector<cv::Rect> eyes;
-  eyeCascade.detectMultiScale(face, eyes);
-
-  int eyesArea = 0;
-  for (int j = 0; j < eyes.size(); j++)
-  {
-    cv::Rect eyeRect = eyes.at(j);
-    cv::Rect absEyeRect(eyeRect.x + faceRect.x, eyeRect.y + faceRect.y, eyeRect.width, eyeRect.height);
-    cv::rectangle(frame, absEyeRect, cv::Scalar(0, 0, 255));
-    eyesArea += eyeRect.area();
+  for (int i = 0; i < faces.size(); i++) {
+    if (faces.at(i).outline.area() > faces.at(index).outline.area()) {
+      index = i;
+    }
   }
 
-  return eyes.size() * (faceRect.area() + eyesArea);
+  return (index >= 0 ? faces.at(index).confidence : 9);
+}
+
+int faceDirectionScore(cv::Mat frame) {
+  frameFaces faces = identifyFrameFaces(frame);
+  int frontalConfidence = getLargestFaceConfidence(faces.frontal);
+  int profileConfidence = getLargestFaceConfidence(faces.profile);
+
+  return frontalConfidence - profileConfidence;
+}
+
+void debugFaceDetection(cv::Mat frame) {
+  frameFaces faces = identifyFrameFaces(frame);
+
+  for (auto face : faces.frontal) {
+    cv::rectangle(frame, face.outline, cv::Scalar(255, 0, 0));
+    cv::putText(frame, std::to_string(face.confidence), cvPoint(face.outline.x, face.outline.y + 10), cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255, 0, 0));
+  }
+
+  for (auto face : faces.profile) {
+    cv::rectangle(frame, face.outline, cv::Scalar(0, 0, 255));
+    cv::putText(frame, std::to_string(face.confidence), cvPoint(face.outline.x, face.outline.y + 10), cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0, 0, 255));
+  }
 }

@@ -30,8 +30,8 @@ typedef struct {
 } captureSource;
 
 // Face Detection
-cv::Rect selectLargestFace(std::vector<cv::Rect> faces);
-int identifyFrontalFace(cv::Mat frame);
+int faceDirectionScore(cv::Mat frame);
+void debugFaceDetection(cv::Mat frame);
 
 // Source Ctl
 captureSource *setupCameraSource(const char *videoId);

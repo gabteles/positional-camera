@@ -6,19 +6,19 @@ void compareFrames(captureSource *cam1, captureSource *cam2) {
   using clock = std::chrono::system_clock;
   while (true) {
     cam1->mutex->lock();
-    int faceArea1 = identifyFrontalFace(cam1->frame);
+    int faceScore1 = faceDirectionScore(cam1->frame);
     cam1->mutex->unlock();
     cam2->mutex->lock();
-    int faceArea2 = identifyFrontalFace(cam2->frame);
+    int faceScore2 = faceDirectionScore(cam2->frame);
     cam2->mutex->unlock();
 
-    std::cout << "[ROUND] Battle Result: " << faceArea1 << " (Cam A) x " << faceArea2 << " (Cam B)" << std::endl;
-    if (faceArea1 == faceArea2) {
+    std::cout << "[ROUND] Battle Result: " << faceScore1 << " (Cam A) x " << faceScore2 << " (Cam B)" << std::endl;
+    if (faceScore1 == faceScore2) {
       std::this_thread::sleep_for(std::chrono::milliseconds(OP_COMPARE_MS / 100));
       continue;
     }
 
-    if (faceArea1 > faceArea2) {
+    if (faceScore1 > faceScore2) {
       cam1->roundsWon++;
     } else {
       cam2->roundsWon++;
