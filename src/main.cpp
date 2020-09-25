@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
   std::thread cam1Thread(readFrameLoop, cam1);
   std::thread cam2Thread(readFrameLoop, cam2);
 
-  compareFrames(cam1, cam2);
+  compareFrames(std::vector<captureSource*>{ cam1, cam2 });
 
   return 0;
 }

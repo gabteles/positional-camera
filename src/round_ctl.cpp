@@ -1,45 +1,61 @@
 #include <camera_ctl.hpp>
+#include <algorithm>
+#include <iterator>
 
 const int majorityRounds = (OP_ROUNDS / 2);
 
-void compareFrames(captureSource *cam1, captureSource *cam2) {
+std::string formatResult(std::vector<int> scores) {
+  std::stringstream *ss = new std::stringstream();
+  *ss << "[" << scores[0];
+  std::for_each(std::next(scores.begin()), scores.end(), [ss](int score) {
+    *ss << ", " << score;
+  });
+  *ss << "]";
+
+  return ss->str();
+}
+
+void compareFrames(std::vector<captureSource*> cams) {
+  std::vector<int> faceScores(cams.size());
+
+  std::vector<int> roundResults(cams.size());
+  std::fill(roundResults.begin(), roundResults.end(), 0);
+
+  std::vector<double> fps(cams.size());
+  std::transform(cams.begin(), cams.end(), fps.begin(), [](captureSource *cam) { return cam->fps; });
+  double targetFps = *std::max_element(fps.begin(), fps.end());
+  int frameTimeMs = 1000 / (int)targetFps;
+
+  switchSource(cams[0]);
+
   using clock = std::chrono::system_clock;
   while (true) {
-    cam1->mutex->lock();
-    int faceScore1 = faceDirectionScore(cam1->frame);
-    cam1->mutex->unlock();
-    cam2->mutex->lock();
-    int faceScore2 = faceDirectionScore(cam2->frame);
-    cam2->mutex->unlock();
+    std::transform(cams.begin(), cams.end(), faceScores.begin(), [](captureSource *cam) {
+      cam->mutex->lock();
+      int score = faceDirectionScore(cam->frame);
+      cam->mutex->unlock();
+      return score;
+    });
 
-    std::cout << "[ROUND] Battle Result: " << faceScore1 << " (Cam A) x " << faceScore2 << " (Cam B)" << std::endl;
-    if (faceScore1 == faceScore2) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(OP_COMPARE_MS / 100));
+    auto result = std::minmax_element(faceScores.begin(), faceScores.end());
+
+    // Tie!
+    if (*result.first == *result.second) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(frameTimeMs));
       continue;
     }
 
-    if (faceScore1 > faceScore2) {
-      cam1->roundsWon++;
-    } else {
-      cam2->roundsWon++;
+    int maxPosition = result.second - faceScores.begin();
+    roundResults[maxPosition]++;
+
+    std::cout << "[ROUND] Round result: " << formatResult(faceScores) << " => " << formatResult(roundResults) << std::endl;
+
+    if (roundResults[maxPosition] > majorityRounds) {
+      std::cout << "[ROUND] Cam " << maxPosition << " won battle" << std::endl;
+      switchSource(cams[maxPosition]);
+      std::fill(roundResults.begin(), roundResults.end(), 0);
     }
 
-    std::cout << "[ROUND] Partial: CAM A - " << cam1->roundsWon << " x " << cam2->roundsWon << " - CAM B" << std::endl;
-
-    if (cam1->roundsWon > majorityRounds || cam2->roundsWon > majorityRounds) {
-      if (cam1->roundsWon > cam2->roundsWon) {
-        std::cout << "[ROUND] Cam A won round" << std::endl;
-        switchSource(cam1);
-      } else {
-        std::cout << "[ROUND] Cam B won round" << std::endl;
-        switchSource(cam2);
-      }
-
-      std::cout << "[ROUND] Starting new round" << std::endl;
-      cam1->roundsWon = 0;
-      cam2->roundsWon = 0;
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(OP_COMPARE_MS));
+    std::this_thread::sleep_for(std::chrono::milliseconds(frameTimeMs * 10));
   }
 }

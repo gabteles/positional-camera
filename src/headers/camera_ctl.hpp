@@ -17,7 +17,7 @@
 #define OP_WIDTH 640
 #define OP_HEIGHT 480
 #define OP_FPS 30
-#define OP_ROUNDS 5
+#define OP_ROUNDS 7
 #define OP_COMPARE_MS 500
 
 typedef struct {
@@ -26,7 +26,7 @@ typedef struct {
   cv::Mat frame;
   std::mutex* mutex;
   int frontalFaceArea;
-  int roundsWon;
+  int fps;
 } captureSource;
 
 // Face Detection
@@ -43,6 +43,28 @@ void outputFrame(captureSource *cam);
 void switchSource(captureSource *source);
 
 // Round Ctl
-void compareFrames(captureSource *cam1, captureSource *cam2);
+void compareFrames(std::vector<captureSource *> cams);
+
+class FrameRater {
+public:
+  FrameRater(int fps) : timeBetweenFrames(1000000 / fps) , tp { std::chrono::steady_clock::now() } {
+
+  }
+
+  void sleep() {
+    // add to time point
+    tp += timeBetweenFrames;
+
+    // and sleep until that time point
+    std::this_thread::sleep_until(tp);
+  }
+
+private:
+    // a duration with a length of 1/FPS seconds
+  std::chrono::duration<double, std::micro> timeBetweenFrames;
+
+  // the time point we'll add to in every loop
+  std::chrono::time_point<std::chrono::steady_clock, decltype(timeBetweenFrames)> tp;
+};
 
 #endif

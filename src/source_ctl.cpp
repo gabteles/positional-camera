@@ -4,6 +4,8 @@ void connectSource(captureSource* cam) {
   cam->cap = cv::VideoCapture(cam->name);
   cam->cap.set(cv::CAP_PROP_FRAME_WIDTH, OP_WIDTH);
   cam->cap.set(cv::CAP_PROP_FRAME_HEIGHT, OP_HEIGHT);
+  cam->fps = cam->cap.get(cv::CAP_PROP_FPS);
+  std::cout << "[SOURCE] Desired FPS: " << cam->fps << std::endl;
 }
 
 captureSource *setupCameraSource(const char *videoId) {
@@ -13,19 +15,19 @@ captureSource *setupCameraSource(const char *videoId) {
   source->mutex = new std::mutex();
   connectSource(source);
   source->frame = cv::Mat(OP_HEIGHT, OP_WIDTH, CV_8UC3);
-  source->roundsWon = 0;
   return source;
 }
 
 void rejectPastFrames(captureSource *cam) {
   using clock = std::chrono::system_clock;
   auto startTime = clock::now();
-  double desiredFps = (1.0f / OP_FPS);
+  double desiredFps = cam->fps;
   double currentFps = 0;
+  bool grabbed = true;
 
-  while (currentFps < desiredFps) {
-    currentFps = (clock::now() - startTime).count() * cam->cap.get(cv::CAP_PROP_FPS);
-    cam->cap.grab();
+  while (currentFps <= desiredFps && grabbed) {
+    currentFps = (clock::now() - startTime).count() * (1.0f / cam->fps);
+    grabbed = cam->cap.grab();
   }
 }
 
@@ -45,7 +47,11 @@ void readFrame(captureSource *cam) {
 }
 
 void readFrameLoop(captureSource *cam) {
+  FrameRater fr(cam->fps);
+
   while (true) {
+    fr.sleep();
+
     if (cam->cap.isOpened()) {
       readFrame(cam);
     } else {

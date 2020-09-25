@@ -7,4 +7,4 @@ build:
 	g++ $(SRC_FILES) -o bin/main -Isrc/headers $(OPENCV_LIBS) -lpthread
 
 run:
-	./bin/main "/dev/video0" "http://192.168.1.51:4747/mjpegfeed" "/dev/video22"
+	./bin/main "/dev/video0" "/dev/video3" "/dev/video22"
