@@ -14,13 +14,16 @@
 #ifndef CAMERA_CTL_FACE_DETECTION
 #define CAMERA_CTL_FACE_DETECTION
 
+using namespace std;
+using namespace cv;
+
 #define OP_WIDTH 640
 #define OP_HEIGHT 480
 #define OP_FPS 30
 #define OP_ROUNDS 7
 #define OP_COMPARE_MS 500
 
-typedef struct {
+typedef struct capSource {
   const char* name;
   cv::VideoCapture cap;
   cv::Mat frame;
@@ -38,16 +41,26 @@ captureSource *setupCameraSource(const char *videoId);
 void readFrameLoop(captureSource *cam);
 
 // Output Ctl
-void openLoopback(char *output);
-void outputFrame(captureSource *cam);
-void switchSource(captureSource *source);
+class OutputController {
+public:
+  OutputController(std::string output, int width, int height);
+  void switchSource(captureSource *source);
+  void outputLoop();
+
+private:
+  void outputFrame();
+
+  int outputFd;
+  captureSource *outputSource;
+  std::mutex outputMutex;
+};
 
 // Round Ctl
-void compareFrames(std::vector<captureSource *> cams);
+void compareFrames(vector<captureSource *> cams, OutputController* output);
 
 class FrameRater {
 public:
-  FrameRater(int fps) : timeBetweenFrames(1000000 / fps) , tp { std::chrono::steady_clock::now() } {
+  FrameRater(int fps) : timeBetweenFrames(1000000 / fps) , tp { chrono::steady_clock::now() } {
 
   }
 
@@ -56,15 +69,15 @@ public:
     tp += timeBetweenFrames;
 
     // and sleep until that time point
-    std::this_thread::sleep_until(tp);
+    this_thread::sleep_until(tp);
   }
 
 private:
     // a duration with a length of 1/FPS seconds
-  std::chrono::duration<double, std::micro> timeBetweenFrames;
+  chrono::duration<double, micro> timeBetweenFrames;
 
   // the time point we'll add to in every loop
-  std::chrono::time_point<std::chrono::steady_clock, decltype(timeBetweenFrames)> tp;
+  chrono::time_point<chrono::steady_clock, decltype(timeBetweenFrames)> tp;
 };
 
 #endif

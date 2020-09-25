@@ -4,12 +4,13 @@ int main(int argc, char **argv) {
   captureSource* cam1 = setupCameraSource(argv[1]);
   captureSource* cam2 = setupCameraSource(argv[2]);
 
-  openLoopback(argv[3]);
+  OutputController *output = new OutputController(string(argv[3]), OP_WIDTH, OP_HEIGHT);
 
   std::thread cam1Thread(readFrameLoop, cam1);
   std::thread cam2Thread(readFrameLoop, cam2);
+  std::thread outputThread([output]() { output->outputLoop(); });
 
-  compareFrames(std::vector<captureSource*>{ cam1, cam2 });
+  compareFrames(std::vector<captureSource*>{ cam1, cam2 }, output);
 
   return 0;
 }

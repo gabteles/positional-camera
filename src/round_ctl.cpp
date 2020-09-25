@@ -15,7 +15,7 @@ std::string formatResult(std::vector<int> scores) {
   return ss->str();
 }
 
-void compareFrames(std::vector<captureSource*> cams) {
+void compareFrames(std::vector<captureSource*> cams, OutputController *controller) {
   std::vector<int> faceScores(cams.size());
 
   std::vector<int> roundResults(cams.size());
@@ -26,7 +26,7 @@ void compareFrames(std::vector<captureSource*> cams) {
   double targetFps = *std::max_element(fps.begin(), fps.end());
   int frameTimeMs = 1000 / (int)targetFps;
 
-  switchSource(cams[0]);
+  controller->switchSource(cams[0]);
 
   using clock = std::chrono::system_clock;
   while (true) {
@@ -52,7 +52,7 @@ void compareFrames(std::vector<captureSource*> cams) {
 
     if (roundResults[maxPosition] > majorityRounds) {
       std::cout << "[ROUND] Cam " << maxPosition << " won battle" << std::endl;
-      switchSource(cams[maxPosition]);
+      controller->switchSource(cams[maxPosition]);
       std::fill(roundResults.begin(), roundResults.end(), 0);
     }
 

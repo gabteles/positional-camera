@@ -1,17 +1,11 @@
 #include <camera_ctl.hpp>
 
-captureSource *outputSource;
-std::mutex outputMutex;
-int outputFd;
-
-void openLoopback(char *output) {
+OutputController::OutputController(std::string output, int width, int height) {
   int res;
 
-  outputFd = open(output, O_WRONLY);
+  outputFd = open(output.c_str(), O_WRONLY);
   std::cout << "[OUTPUT] FD: " << outputFd << std::endl;
 
-  int width = OP_WIDTH;
-  int height = OP_HEIGHT;
   int channels = 3;
   int total = width * height;
 
@@ -30,22 +24,29 @@ void openLoopback(char *output) {
   std::cout << "[OUTPUT] Setup ioctl 2: " << res << std::endl;
 }
 
-void outputFrame(captureSource* cam) {
+void OutputController::outputFrame() {
   outputMutex.lock();
-  if (outputSource == cam) {
-    cv::Mat colorCorrectFrame;
-    cv::cvtColor(cam->frame, colorCorrectFrame, CV_BGR2YUV_I420);
-    write(
-      outputFd,
-      colorCorrectFrame.data,
-      colorCorrectFrame.total() * colorCorrectFrame.elemSize()
-    );
-  }
+  cv::Mat colorCorrectFrame;
+  cv::cvtColor(outputSource->frame, colorCorrectFrame, CV_BGR2YUV_I420);
+  write(
+    outputFd,
+    colorCorrectFrame.data,
+    colorCorrectFrame.total() * colorCorrectFrame.elemSize()
+  );
   outputMutex.unlock();
 }
 
-void switchSource(captureSource* source) {
+void OutputController::switchSource(captureSource *source) {
   outputMutex.lock();
   outputSource = source;
   outputMutex.unlock();
+}
+
+void OutputController::outputLoop() {
+  FrameRater fr(OP_FPS);
+
+  while (true) {
+    fr.sleep();
+    this->outputFrame();
+  }
 }

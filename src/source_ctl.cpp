@@ -41,8 +41,6 @@ void readFrame(captureSource *cam) {
     cam->mutex->lock();
     cv::resize(frame, cam->frame, cv::Size(OP_WIDTH, OP_HEIGHT));
     cam->mutex->unlock();
-
-    outputFrame(cam);
   }
 }
 
