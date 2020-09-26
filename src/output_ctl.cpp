@@ -27,7 +27,7 @@ OutputController::OutputController(std::string output, int width, int height) {
 void OutputController::outputFrame() {
   outputMutex.lock();
   cv::Mat colorCorrectFrame;
-  cv::cvtColor(outputSource->frame, colorCorrectFrame, CV_BGR2YUV_I420);
+  cv::cvtColor(outputSource->getFrame(), colorCorrectFrame, CV_BGR2YUV_I420);
   write(
     outputFd,
     colorCorrectFrame.data,
@@ -36,7 +36,7 @@ void OutputController::outputFrame() {
   outputMutex.unlock();
 }
 
-void OutputController::switchSource(captureSource *source) {
+void OutputController::switchSource(VideoSource *source) {
   outputMutex.lock();
   outputSource = source;
   outputMutex.unlock();

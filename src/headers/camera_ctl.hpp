@@ -32,37 +32,13 @@ typedef struct capSource {
   int fps;
 } captureSource;
 
-// Face Detection
-int faceDirectionScore(cv::Mat frame);
-void debugFaceDetection(cv::Mat frame);
-
-// Source Ctl
-captureSource *setupCameraSource(const char *videoId);
-void readFrameLoop(captureSource *cam);
-
-// Output Ctl
-class OutputController {
-public:
-  OutputController(std::string output, int width, int height);
-  void switchSource(captureSource *source);
-  void outputLoop();
-
-private:
-  void outputFrame();
-
-  int outputFd;
-  captureSource *outputSource;
-  std::mutex outputMutex;
-};
-
-// Round Ctl
-void compareFrames(vector<captureSource *> cams, OutputController* output);
-
+// Frame Rater
 class FrameRater {
 public:
-  FrameRater(int fps) : timeBetweenFrames(1000000 / fps) , tp { chrono::steady_clock::now() } {
-
-  }
+  FrameRater(int fps) :
+    timeBetweenFrames(1000000 / fps),
+    tp { chrono::steady_clock::now() }
+    {}
 
   void sleep() {
     // add to time point
@@ -79,5 +55,50 @@ private:
   // the time point we'll add to in every loop
   chrono::time_point<chrono::steady_clock, decltype(timeBetweenFrames)> tp;
 };
+
+
+// Face Detection
+int faceDirectionScore(cv::Mat frame);
+void debugFaceDetection(cv::Mat frame);
+
+// Source Ctl
+class VideoSource {
+public:
+  VideoSource(string videoId);
+  void connectSource();
+  void rejectPastFrames();
+  void readFrame();
+  void readFrameLoop();
+  int getFaceDirectionScore();
+  Mat getFrame();
+  int getFps();
+
+private:
+  string name;
+  VideoCapture cap;
+  Mat frame;
+  std::mutex *mutex;
+  int frontalFaceArea;
+  int fps;
+  FrameRater *frameRater;
+};
+
+// Output Ctl
+class OutputController {
+public:
+  OutputController(std::string output, int width, int height);
+  void switchSource(VideoSource *source);
+  void outputLoop();
+
+private:
+  void outputFrame();
+
+  int outputFd;
+  VideoSource *outputSource;
+  std::mutex outputMutex;
+};
+
+// Round Ctl
+void compareFrames(vector<VideoSource *> cams, OutputController *controller);
 
 #endif

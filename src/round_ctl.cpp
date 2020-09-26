@@ -4,10 +4,10 @@
 
 const int majorityRounds = (OP_ROUNDS / 2);
 
-std::string formatResult(std::vector<int> scores) {
-  std::stringstream *ss = new std::stringstream();
+string formatResult(vector<int> scores) {
+  stringstream *ss = new stringstream();
   *ss << "[" << scores[0];
-  std::for_each(std::next(scores.begin()), scores.end(), [ss](int score) {
+  for_each(next(scores.begin()), scores.end(), [ss](int score) {
     *ss << ", " << score;
   });
   *ss << "]";
@@ -15,47 +15,44 @@ std::string formatResult(std::vector<int> scores) {
   return ss->str();
 }
 
-void compareFrames(std::vector<captureSource*> cams, OutputController *controller) {
-  std::vector<int> faceScores(cams.size());
+void compareFrames(vector<VideoSource*> cams, OutputController *controller) {
+  vector<int> faceScores(cams.size());
 
-  std::vector<int> roundResults(cams.size());
-  std::fill(roundResults.begin(), roundResults.end(), 0);
+  vector<int> roundResults(cams.size());
+  fill(roundResults.begin(), roundResults.end(), 0);
 
-  std::vector<double> fps(cams.size());
-  std::transform(cams.begin(), cams.end(), fps.begin(), [](captureSource *cam) { return cam->fps; });
-  double targetFps = *std::max_element(fps.begin(), fps.end());
+  vector<double> fps(cams.size());
+  transform(cams.begin(), cams.end(), fps.begin(), [](VideoSource *cam) { return cam->getFps(); });
+  double targetFps = *max_element(fps.begin(), fps.end());
   int frameTimeMs = 1000 / (int)targetFps;
 
   controller->switchSource(cams[0]);
 
-  using clock = std::chrono::system_clock;
+  using clock = chrono::system_clock;
   while (true) {
-    std::transform(cams.begin(), cams.end(), faceScores.begin(), [](captureSource *cam) {
-      cam->mutex->lock();
-      int score = faceDirectionScore(cam->frame);
-      cam->mutex->unlock();
-      return score;
+    transform(cams.begin(), cams.end(), faceScores.begin(), [](VideoSource *cam) {
+      return cam->getFaceDirectionScore();
     });
 
-    auto result = std::minmax_element(faceScores.begin(), faceScores.end());
+    auto result = minmax_element(faceScores.begin(), faceScores.end());
 
     // Tie!
     if (*result.first == *result.second) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(frameTimeMs));
+      this_thread::sleep_for(chrono::milliseconds(frameTimeMs));
       continue;
     }
 
     int maxPosition = result.second - faceScores.begin();
     roundResults[maxPosition]++;
 
-    std::cout << "[ROUND] Round result: " << formatResult(faceScores) << " => " << formatResult(roundResults) << std::endl;
+    cout << "[ROUND] Round result: " << formatResult(faceScores) << " => " << formatResult(roundResults) << endl;
 
     if (roundResults[maxPosition] > majorityRounds) {
-      std::cout << "[ROUND] Cam " << maxPosition << " won battle" << std::endl;
+      cout << "[ROUND] Cam " << maxPosition << " won battle" << endl;
       controller->switchSource(cams[maxPosition]);
-      std::fill(roundResults.begin(), roundResults.end(), 0);
+      fill(roundResults.begin(), roundResults.end(), 0);
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(frameTimeMs * 10));
+    this_thread::sleep_for(chrono::milliseconds(frameTimeMs * 10));
   }
 }

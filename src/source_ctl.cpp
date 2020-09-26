@@ -1,61 +1,72 @@
 #include <camera_ctl.hpp>
 
-void connectSource(captureSource* cam) {
-  cam->cap = cv::VideoCapture(cam->name);
-  cam->cap.set(cv::CAP_PROP_FRAME_WIDTH, OP_WIDTH);
-  cam->cap.set(cv::CAP_PROP_FRAME_HEIGHT, OP_HEIGHT);
-  cam->fps = cam->cap.get(cv::CAP_PROP_FPS);
-  std::cout << "[SOURCE] Desired FPS: " << cam->fps << std::endl;
+VideoSource::VideoSource(string videoId) {
+  this->name = videoId;
+  this->mutex = new std::mutex();
+  this->frame = Mat(OP_HEIGHT, OP_WIDTH, CV_8UC3);
+  this->connectSource();
 }
 
-captureSource *setupCameraSource(const char *videoId) {
-  std::cout << "[SOURCE] Camera source: " << videoId << std::endl;
-  captureSource *source = new captureSource;
-  source->name = videoId;
-  source->mutex = new std::mutex();
-  connectSource(source);
-  source->frame = cv::Mat(OP_HEIGHT, OP_WIDTH, CV_8UC3);
-  return source;
+void VideoSource::connectSource() {
+  this->cap = VideoCapture(this->name);
+  this->cap.set(CAP_PROP_FRAME_WIDTH, OP_WIDTH);
+  this->cap.set(CAP_PROP_FRAME_HEIGHT, OP_HEIGHT);
+  this->fps = this->cap.get(CAP_PROP_FPS);
+  this->frameRater = new FrameRater(this->fps);
+  cout << "[SOURCE] Desired FPS: " << this->fps << endl;
 }
 
-void rejectPastFrames(captureSource *cam) {
-  using clock = std::chrono::system_clock;
+void VideoSource::rejectPastFrames() {
+  using clock = chrono::system_clock;
   auto startTime = clock::now();
-  double desiredFps = cam->fps;
   double currentFps = 0;
   bool grabbed = true;
 
-  while (currentFps <= desiredFps && grabbed) {
-    currentFps = (clock::now() - startTime).count() * (1.0f / cam->fps);
-    grabbed = cam->cap.grab();
+  while (currentFps <= this->fps && grabbed) {
+    currentFps = (clock::now() - startTime).count() * (1.0f / this->fps);
+    grabbed = this->cap.grab();
   }
 }
 
-void readFrame(captureSource *cam) {
-  rejectPastFrames(cam);
+int VideoSource::getFps() {
+  return fps;
+}
 
-  cv::Mat frame;
-  bool grabbed = cam->cap.retrieve(frame);
+Mat VideoSource::getFrame() {
+  return frame;
+}
+
+void VideoSource::readFrame() {
+  this->rejectPastFrames();
+
+  Mat frame;
+  bool grabbed = this->cap.retrieve(frame);
 
   if (grabbed) {
-    cam->mutex->lock();
-    cv::resize(frame, cam->frame, cv::Size(OP_WIDTH, OP_HEIGHT));
-    cam->mutex->unlock();
+    this->mutex->lock();
+    resize(frame, this->frame, Size(OP_WIDTH, OP_HEIGHT));
+    this->mutex->unlock();
   }
 }
 
-void readFrameLoop(captureSource *cam) {
-  FrameRater fr(cam->fps);
+int VideoSource::getFaceDirectionScore() {
+  mutex->lock();
+  int score = faceDirectionScore(frame);
+  mutex->unlock();
 
+  return score;
+}
+
+void VideoSource::readFrameLoop() {
   while (true) {
-    fr.sleep();
+    frameRater->sleep();
 
-    if (cam->cap.isOpened()) {
-      readFrame(cam);
+    if (this->cap.isOpened()) {
+      this->readFrame();
     } else {
-      std::cout << "[SOURCE] Camera source not connected (" << cam->name << "). Reconnecting... " << std::endl;
-      connectSource(cam);
-      std::this_thread::sleep_for(std::chrono::milliseconds(OP_COMPARE_MS * 10));
+      cout << "[SOURCE] Camera source not connected (" << this->name << "). Reconnecting... " << endl;
+      this->connectSource();
+      this_thread::sleep_for(chrono::milliseconds(OP_COMPARE_MS * 10));
     }
   }
 }
