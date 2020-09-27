@@ -1,16 +1,33 @@
 #include <camera_ctl.hpp>
 
+vector<VideoSource*> *getVideoSourcesFromArgs(int argc, char** argv) {
+  vector<VideoSource*> *sources = new vector<VideoSource*>;
+
+  for (int i = 1; i < (argc - 1); i++)
+    sources->push_back(new VideoSource(string(argv[i])));
+
+  return sources;
+}
+
 int main(int argc, char **argv) {
-  VideoSource* cam1 = new VideoSource(string(argv[1]));
-  VideoSource* cam2 = new VideoSource(string(argv[2]));
+  vector<VideoSource *> *sources = getVideoSourcesFromArgs(argc, argv);
+  vector<thread*> sourceThreads;
 
-  OutputController *output = new OutputController(string(argv[3]), OP_WIDTH, OP_HEIGHT);
+  OutputController *output = new OutputController(
+    string(argv[argc - 1]),
+    OP_WIDTH,
+    OP_HEIGHT
+  );
 
-  std::thread cam1Thread([cam1]() { cam1->readFrameLoop(); });
-  std::thread cam2Thread([cam2]() { cam2->readFrameLoop(); });
+  for (int i = 0; i < sources->size(); i++) {
+    VideoSource *source = sources->at(i);
+    sourceThreads.push_back(new thread([source]() { source->readFrameLoop(); }));
+  }
+
   std::thread outputThread([output]() { output->outputLoop(); });
 
-  compareFrames(vector<VideoSource*>{ cam1, cam2 }, output);
+  SourceSelector selector(sources, output);
+  selector.selectionLoop();
 
   return 0;
 }

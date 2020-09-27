@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <algorithm>
+#include <iterator>
 
 #ifndef CAMERA_CTL_FACE_DETECTION
 #define CAMERA_CTL_FACE_DETECTION
@@ -99,6 +101,24 @@ private:
 };
 
 // Round Ctl
-void compareFrames(vector<VideoSource *> cams, OutputController *controller);
+class SourceSelector {
+public:
+  SourceSelector(vector<VideoSource*> *sources, OutputController *controller);
+  void selectionLoop();
+
+private:
+  void resetRound();
+  void initializeFrameRater();
+  void evaluateSourceScores();
+  int getRoundWinner();
+  void processRound();
+  string formatResult(vector<int> scores);
+
+  vector<VideoSource*> *sources;
+  OutputController *controller;
+  vector<int> sourceScores;
+  vector<int> roundResults;
+  FrameRater *frameRater;
+};
 
 #endif

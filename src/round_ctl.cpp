@@ -1,10 +1,39 @@
 #include <camera_ctl.hpp>
-#include <algorithm>
-#include <iterator>
+
+SourceSelector::SourceSelector(
+  vector<VideoSource*> *sources,
+  OutputController *controller
+) {
+  this->sources = sources;
+  this->controller = controller;
+  this->roundResults.resize(sources->size());
+  this->sourceScores.resize(sources->size());
+
+  this->resetRound();
+  this->initializeFrameRater();
+}
+
+void SourceSelector::resetRound() {
+  fill(roundResults.begin(), roundResults.end(), 0);
+}
+
+void SourceSelector::initializeFrameRater() {
+  int targetFps = 0;
+
+  for (auto source : *sources) {
+    int sourceFps = source->getFps();
+
+    if (targetFps < sourceFps)
+      targetFps = sourceFps;
+  }
+
+  // Works at 1/10 times the faster camera.
+  this->frameRater = new FrameRater(targetFps / 10);
+}
 
 const int majorityRounds = (OP_ROUNDS / 2);
 
-string formatResult(vector<int> scores) {
+string SourceSelector::formatResult(vector<int> scores) {
   stringstream *ss = new stringstream();
   *ss << "[" << scores[0];
   for_each(next(scores.begin()), scores.end(), [ss](int score) {
@@ -15,44 +44,50 @@ string formatResult(vector<int> scores) {
   return ss->str();
 }
 
-void compareFrames(vector<VideoSource*> cams, OutputController *controller) {
-  vector<int> faceScores(cams.size());
-
-  vector<int> roundResults(cams.size());
-  fill(roundResults.begin(), roundResults.end(), 0);
-
-  vector<double> fps(cams.size());
-  transform(cams.begin(), cams.end(), fps.begin(), [](VideoSource *cam) { return cam->getFps(); });
-  double targetFps = *max_element(fps.begin(), fps.end());
-  int frameTimeMs = 1000 / (int)targetFps;
-
-  controller->switchSource(cams[0]);
-
+void SourceSelector::selectionLoop() {
   using clock = chrono::system_clock;
+  this->controller->switchSource(sources->at(0));
+
   while (true) {
-    transform(cams.begin(), cams.end(), faceScores.begin(), [](VideoSource *cam) {
-      return cam->getFaceDirectionScore();
-    });
+    this->evaluateSourceScores();
+    this->processRound();
+    this->frameRater->sleep();
+  }
+}
 
-    auto result = minmax_element(faceScores.begin(), faceScores.end());
+void SourceSelector::evaluateSourceScores() {
+  transform(sources->begin(), sources->end(), sourceScores.begin(), [](VideoSource *cam) {
+    return cam->getFaceDirectionScore();
+  });
+}
 
-    // Tie!
-    if (*result.first == *result.second) {
-      this_thread::sleep_for(chrono::milliseconds(frameTimeMs));
-      continue;
-    }
+int SourceSelector::getRoundWinner() {
+  auto result = minmax_element(sourceScores.begin(), sourceScores.end());
 
-    int maxPosition = result.second - faceScores.begin();
-    roundResults[maxPosition]++;
+  // Tie
+  if (*result.first == *result.second)
+    return -1;
 
-    cout << "[ROUND] Round result: " << formatResult(faceScores) << " => " << formatResult(roundResults) << endl;
+  return result.second - sourceScores.begin();
+}
 
-    if (roundResults[maxPosition] > majorityRounds) {
-      cout << "[ROUND] Cam " << maxPosition << " won battle" << endl;
-      controller->switchSource(cams[maxPosition]);
-      fill(roundResults.begin(), roundResults.end(), 0);
-    }
+void SourceSelector::processRound() {
+  int winnerCamera = this->getRoundWinner();
 
-    this_thread::sleep_for(chrono::milliseconds(frameTimeMs * 10));
+  if (winnerCamera == -1)
+    return;
+
+  roundResults[winnerCamera]++;
+
+  cout << "[ROUND] Round result: "
+       << formatResult(sourceScores)
+       << " => "
+       << formatResult(roundResults)
+       << endl;
+
+  if (roundResults[winnerCamera] > majorityRounds) {
+    cout << "[ROUND] Cam " << winnerCamera << " won battle" << endl;
+    controller->switchSource(sources->at(winnerCamera));
+    fill(roundResults.begin(), roundResults.end(), 0);
   }
 }
