@@ -64,16 +64,39 @@ int faceDirectionScore(cv::Mat frame);
 void debugFaceDetection(cv::Mat frame);
 
 // Source Ctl
-class VideoSource {
+class IVideoSource {
+public:
+  virtual Mat getFrame() = 0;
+  void startCapturing() {
+    keepCapturing = true;
+
+    this->captureThread = new thread([this]() {
+      while (this->keepCapturing)
+        this->capture();
+    });
+  };
+  void stopCapturing() { keepCapturing = false; };
+
+protected:
+  virtual void capture() = 0;
+
+private:
+  bool keepCapturing;
+  thread *captureThread;
+};
+
+class VideoSource : public IVideoSource {
 public:
   VideoSource(string videoId);
   void connectSource();
   void rejectPastFrames();
   void readFrame();
-  void readFrameLoop();
+  virtual Mat getFrame();
   int getFaceDirectionScore();
-  Mat getFrame();
   int getFps();
+
+protected:
+  virtual void capture();
 
 private:
   string name;
@@ -85,28 +108,15 @@ private:
   FrameRater *frameRater;
 };
 
-// Output Ctl
-class OutputController {
+class SourceSelector : public IVideoSource {
 public:
-  OutputController(std::string output, int width, int height, int fps);
-  void switchSource(VideoSource *source);
-  void outputLoop();
+  SourceSelector(vector<VideoSource*> *sources);
+  virtual Mat getFrame();
+  virtual void startCapturing();
+  virtual void stopCapturing();
 
-private:
-  void setupOutput(int width, int height);
-  void outputFrame();
-
-  int outputFd;
-  FrameRater *frameRater;
-  VideoSource *outputSource;
-  std::mutex outputMutex;
-};
-
-// Round Ctl
-class SourceSelector {
-public:
-  SourceSelector(vector<VideoSource*> *sources, OutputController *controller);
-  void selectionLoop();
+protected:
+  virtual void capture();
 
 private:
   void resetRound();
@@ -116,11 +126,26 @@ private:
   void processRound();
   string formatResult(vector<int> scores);
 
+  VideoSource* selectedSource;
   vector<VideoSource*> *sources;
-  OutputController *controller;
   vector<int> sourceScores;
   vector<int> roundResults;
   FrameRater *frameRater;
+};
+
+// Output Ctl
+class OutputWriter {
+public:
+  OutputWriter(string output, int width, int height, int fps, IVideoSource *source);
+  void outputLoop();
+
+private:
+  void setupOutput(int width, int height);
+  void outputFrame();
+
+  int outputFd;
+  FrameRater *frameRater;
+  IVideoSource *source;
 };
 
 #endif

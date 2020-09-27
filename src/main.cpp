@@ -11,25 +11,19 @@ vector<VideoSource*> *getVideoSourcesFromArgs(int argc, char** argv) {
 
 int main(int argc, char **argv) {
   vector<VideoSource *> *sources = getVideoSourcesFromArgs(argc, argv);
-  vector<thread*> sourceThreads;
 
-  OutputController *output = new OutputController(
+  SourceSelector *selector = new SourceSelector(sources);
+  selector->startCapturing();
+
+  OutputWriter *output = new OutputWriter(
     string(argv[argc - 1]),
     OP_WIDTH,
     OP_HEIGHT,
-    OP_FPS
+    OP_FPS,
+    selector
   );
 
-  for (int i = 0; i < sources->size(); i++) {
-    VideoSource *source = sources->at(i);
-    sourceThreads.push_back(new thread([source]() { source->readFrameLoop(); }));
-  }
-
-  std::thread outputThread([output]() { output->outputLoop(); });
-
-  SourceSelector selector(sources, output);
-  selector.selectionLoop();
-
+  output->outputLoop();
   return 0;
 }
 

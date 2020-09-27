@@ -57,16 +57,14 @@ int VideoSource::getFaceDirectionScore() {
   return score;
 }
 
-void VideoSource::readFrameLoop() {
-  while (true) {
-    frameRater->sleep();
+void VideoSource::capture() {
+  this->frameRater->sleep();
 
-    if (this->cap.isOpened()) {
-      this->readFrame();
-    } else {
-      cout << "[SOURCE] Camera source not connected (" << this->name << "). Reconnecting... " << endl;
-      this->connectSource();
-      this_thread::sleep_for(chrono::milliseconds(OP_COMPARE_MS * 10));
-    }
+  if (this->cap.isOpened()) {
+    this->readFrame();
+  } else {
+    cout << "[SOURCE] Camera source not connected (" << this->name << "). Reconnecting... " << endl;
+    this->connectSource();
+    this_thread::sleep_for(chrono::milliseconds(OP_COMPARE_MS * 10));
   }
 }

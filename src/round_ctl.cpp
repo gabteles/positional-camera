@@ -1,16 +1,37 @@
 #include <camera_ctl.hpp>
 
-SourceSelector::SourceSelector(
-  vector<VideoSource*> *sources,
-  OutputController *controller
-) {
+const int majorityRounds = (OP_ROUNDS / 2);
+SourceSelector::SourceSelector(vector<VideoSource *> *sources) {
   this->sources = sources;
-  this->controller = controller;
+  this->selectedSource = sources->at(0);
+
   this->roundResults.resize(sources->size());
   this->sourceScores.resize(sources->size());
 
   this->resetRound();
   this->initializeFrameRater();
+}
+
+Mat SourceSelector::getFrame() {
+  return selectedSource->getFrame();
+}
+
+void SourceSelector::startCapturing() {
+  IVideoSource::startCapturing();
+  for (auto source : *sources)
+    source->startCapturing();
+}
+
+void SourceSelector::stopCapturing() {
+  IVideoSource::stopCapturing();
+  for (auto source : *sources)
+    source->stopCapturing();
+}
+
+void SourceSelector::capture() {
+  this->evaluateSourceScores();
+  this->processRound();
+  this->frameRater->sleep();
 }
 
 void SourceSelector::resetRound() {
@@ -31,8 +52,6 @@ void SourceSelector::initializeFrameRater() {
   this->frameRater = new FrameRater(targetFps / 10);
 }
 
-const int majorityRounds = (OP_ROUNDS / 2);
-
 string SourceSelector::formatResult(vector<int> scores) {
   stringstream *ss = new stringstream();
   *ss << "[" << scores[0];
@@ -42,17 +61,6 @@ string SourceSelector::formatResult(vector<int> scores) {
   *ss << "]";
 
   return ss->str();
-}
-
-void SourceSelector::selectionLoop() {
-  using clock = chrono::system_clock;
-  this->controller->switchSource(sources->at(0));
-
-  while (true) {
-    this->evaluateSourceScores();
-    this->processRound();
-    this->frameRater->sleep();
-  }
 }
 
 void SourceSelector::evaluateSourceScores() {
@@ -87,7 +95,7 @@ void SourceSelector::processRound() {
 
   if (roundResults[winnerCamera] > majorityRounds) {
     cout << "[ROUND] Cam " << winnerCamera << " won battle" << endl;
-    controller->switchSource(sources->at(winnerCamera));
+    this->selectedSource = sources->at(winnerCamera);
     fill(roundResults.begin(), roundResults.end(), 0);
   }
 }

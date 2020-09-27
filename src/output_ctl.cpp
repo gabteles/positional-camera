@@ -1,6 +1,7 @@
 #include <camera_ctl.hpp>
 
-OutputController::OutputController(string output, int width, int height, int fps) {
+OutputWriter::OutputWriter(string output, int width, int height, int fps, IVideoSource *source) {
+  this->source = source;
   this->frameRater = new FrameRater(fps);
   this->outputFd = open(output.c_str(), O_WRONLY);
   cout << "[OUTPUT] FD: " << outputFd << endl;
@@ -8,7 +9,7 @@ OutputController::OutputController(string output, int width, int height, int fps
   this->setupOutput(width, height);
 }
 
-void OutputController::setupOutput(int width, int height) {
+void OutputWriter::setupOutput(int width, int height) {
   int res;
   int channels = 3;
   int total = width * height;
@@ -28,25 +29,17 @@ void OutputController::setupOutput(int width, int height) {
   cout << "[OUTPUT] Setup ioctl 2: " << res << endl;
 }
 
-void OutputController::outputFrame() {
-  outputMutex.lock();
+void OutputWriter::outputFrame() {
   cv::Mat colorCorrectFrame;
-  cv::cvtColor(outputSource->getFrame(), colorCorrectFrame, CV_BGR2YUV_I420);
+  cv::cvtColor(this->source->getFrame(), colorCorrectFrame, CV_BGR2YUV_I420);
   write(
     this->outputFd,
     colorCorrectFrame.data,
     colorCorrectFrame.total() * colorCorrectFrame.elemSize()
   );
-  outputMutex.unlock();
 }
 
-void OutputController::switchSource(VideoSource *source) {
-  outputMutex.lock();
-  outputSource = source;
-  outputMutex.unlock();
-}
-
-void OutputController::outputLoop() {
+void OutputWriter::outputLoop() {
   while (true) {
     this->outputFrame();
     this->frameRater->sleep();
