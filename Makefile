@@ -1,9 +1,20 @@
-SRC_DIR := ./src
-SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
+SRCDIR := src
+OBJDIR := output
+SRCS := $(wildcard $(SRCDIR)/*.cpp)
+OBJS := ${subst $(SRCDIR),$(OBJDIR),$(subst .cpp,.o,$(SRCS))}
+LDLIBS := -lopencv_core -lopencv_objdetect -lopencv_imgproc -lopencv_videoio -lpthread
+TARGET := positional-camera
 
-build:
-	mkdir -p bin
-	g++ $(SRC_FILES) -o bin/main -Iinclude -lopencv_core -lopencv_objdetect -lopencv_imgproc -lopencv_videoio -lpthread
+.PHONY: all clean
 
-run:
-	./bin/main "/dev/video0" "/dev/video3" "/dev/video22"
+all: $(TARGET)
+
+clean:
+	rm -rf $(OBJDIR)
+
+$(TARGET): $(OBJS)
+	$(CXX) $(LDFLAGS) -o output/$(TARGET) $(OBJS) $(LDLIBS)
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	mkdir -p $(OBJDIR)
+	$(CXX) -c $< -Iinclude -o $@ $(CXXFLAGS) $(CPPFLAGS)
