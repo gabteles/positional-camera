@@ -16,7 +16,8 @@ int main(int argc, char **argv) {
   OutputController *output = new OutputController(
     string(argv[argc - 1]),
     OP_WIDTH,
-    OP_HEIGHT
+    OP_HEIGHT,
+    OP_FPS
   );
 
   for (int i = 0; i < sources->size(); i++) {

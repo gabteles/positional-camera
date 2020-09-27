@@ -88,14 +88,16 @@ private:
 // Output Ctl
 class OutputController {
 public:
-  OutputController(std::string output, int width, int height);
+  OutputController(std::string output, int width, int height, int fps);
   void switchSource(VideoSource *source);
   void outputLoop();
 
 private:
+  void setupOutput(int width, int height);
   void outputFrame();
 
   int outputFd;
+  FrameRater *frameRater;
   VideoSource *outputSource;
   std::mutex outputMutex;
 };
