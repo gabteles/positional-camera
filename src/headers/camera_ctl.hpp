@@ -25,30 +25,11 @@ using namespace cv;
 #define OP_ROUNDS 7
 #define OP_COMPARE_MS 500
 
-typedef struct capSource {
-  const char* name;
-  cv::VideoCapture cap;
-  cv::Mat frame;
-  std::mutex* mutex;
-  int frontalFaceArea;
-  int fps;
-} captureSource;
-
 // Frame Rater
 class FrameRater {
 public:
-  FrameRater(int fps) :
-    timeBetweenFrames(1000000 / fps),
-    tp { chrono::steady_clock::now() }
-    {}
-
-  void sleep() {
-    // add to time point
-    tp += timeBetweenFrames;
-
-    // and sleep until that time point
-    this_thread::sleep_until(tp);
-  }
+  FrameRater(int fps);
+  void sleep();
 
 private:
     // a duration with a length of 1/FPS seconds
