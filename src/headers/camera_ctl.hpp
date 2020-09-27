@@ -93,16 +93,16 @@ private:
   std::mutex frameMutex;
 };
 
-class VideoSource : public IVideoSource {
+class WebcamVideoSource : public IVideoSource {
 public:
-  VideoSource(string videoId);
-  void connectSource();
-  void rejectPastFrames();
-  void readFrame();
+  WebcamVideoSource(string videoId);
   int getFps();
 
 protected:
   virtual void capture();
+  void readFrame();
+  void connectSource();
+  void rejectPastFrames();
 
 private:
   string name;
@@ -114,7 +114,7 @@ private:
 
 class SourceSelector : public IVideoSource {
 public:
-  SourceSelector(vector<VideoSource*> *sources);
+  SourceSelector(vector<IVideoSource*> *sources);
   virtual void startCapturing();
   virtual void stopCapturing();
 
@@ -130,8 +130,8 @@ private:
   void processRound();
   string formatResult(vector<int> scores);
 
-  VideoSource* selectedSource;
-  vector<VideoSource*> *sources;
+  IVideoSource* selectedSource;
+  vector<IVideoSource*> *sources;
   vector<int> sourceScores;
   vector<int> roundResults;
   FrameRater *frameRater;

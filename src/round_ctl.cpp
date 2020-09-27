@@ -1,7 +1,7 @@
 #include <camera_ctl.hpp>
 
 const int majorityRounds = (OP_ROUNDS / 2);
-SourceSelector::SourceSelector(vector<VideoSource *> *sources) {
+SourceSelector::SourceSelector(vector<IVideoSource *> *sources) {
   this->sources = sources;
   this->selectedSource = sources->at(0);
 
@@ -9,7 +9,6 @@ SourceSelector::SourceSelector(vector<VideoSource *> *sources) {
   this->sourceScores.resize(sources->size());
 
   this->resetRound();
-  this->initializeFrameRater();
 }
 
 Mat SourceSelector::getFrame() {
@@ -31,25 +30,13 @@ void SourceSelector::stopCapturing() {
 void SourceSelector::capture() {
   this->evaluateSourceScores();
   this->processRound();
-  this->frameRater->sleep();
+  sleep(1);
+  // TODO: Frame rate (?)
+  //this->frameRater->sleep();
 }
 
 void SourceSelector::resetRound() {
   fill(roundResults.begin(), roundResults.end(), 0);
-}
-
-void SourceSelector::initializeFrameRater() {
-  int targetFps = 0;
-
-  for (auto source : *sources) {
-    int sourceFps = source->getFps();
-
-    if (targetFps < sourceFps)
-      targetFps = sourceFps;
-  }
-
-  // Works at 1/10 times the faster camera.
-  this->frameRater = new FrameRater(targetFps / 10);
 }
 
 string SourceSelector::formatResult(vector<int> scores) {
@@ -64,8 +51,7 @@ string SourceSelector::formatResult(vector<int> scores) {
 }
 
 void SourceSelector::evaluateSourceScores() {
-
-  transform(sources->begin(), sources->end(), sourceScores.begin(), [](VideoSource *cam) {
+  transform(sources->begin(), sources->end(), sourceScores.begin(), [](IVideoSource *cam) {
     int *score = new int;
     cam->executeWithFrame([score](Mat frame) {
       *score = FaceDetector::evaluate(frame);
