@@ -44,14 +44,6 @@ void VideoSource::readFrame() {
   }
 }
 
-int VideoSource::getFaceDirectionScore() {
-  int *score = new int;
-  this->executeWithFrame([score](Mat frame) -> int {
-    *score = faceDirectionScore(frame);
-  });
-  return *score;
-}
-
 void VideoSource::capture() {
   this->frameRater->sleep();
 

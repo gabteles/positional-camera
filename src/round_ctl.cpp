@@ -64,8 +64,13 @@ string SourceSelector::formatResult(vector<int> scores) {
 }
 
 void SourceSelector::evaluateSourceScores() {
+
   transform(sources->begin(), sources->end(), sourceScores.begin(), [](VideoSource *cam) {
-    return cam->getFaceDirectionScore();
+    int *score = new int;
+    cam->executeWithFrame([score](Mat frame) {
+      *score = FaceDetector::evaluate(frame);
+    });
+    return *score;
   });
 }
 
