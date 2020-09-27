@@ -30,13 +30,16 @@ void OutputWriter::setupOutput(int width, int height) {
 }
 
 void OutputWriter::outputFrame() {
-  cv::Mat colorCorrectFrame;
-  cv::cvtColor(this->source->getFrame(), colorCorrectFrame, CV_BGR2YUV_I420);
-  write(
-    this->outputFd,
-    colorCorrectFrame.data,
-    colorCorrectFrame.total() * colorCorrectFrame.elemSize()
-  );
+  this->source->executeWithFrame([this](Mat frame) {
+    // TODO: cvt should be called when frames are read
+    cv::Mat colorCorrectFrame;
+    cv::cvtColor(frame, colorCorrectFrame, CV_BGR2YUV_I420);
+    write(
+      this->outputFd,
+      colorCorrectFrame.data,
+      colorCorrectFrame.total() * colorCorrectFrame.elemSize()
+    );
+  });
 }
 
 void OutputWriter::outputLoop() {

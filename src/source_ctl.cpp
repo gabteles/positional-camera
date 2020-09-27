@@ -2,7 +2,6 @@
 
 VideoSource::VideoSource(string videoId) {
   this->name = videoId;
-  this->mutex = new std::mutex();
   this->frame = Mat(OP_HEIGHT, OP_WIDTH, CV_8UC3);
   this->connectSource();
 }
@@ -32,29 +31,25 @@ int VideoSource::getFps() {
   return fps;
 }
 
-Mat VideoSource::getFrame() {
-  return frame;
-}
-
 void VideoSource::readFrame() {
   this->rejectPastFrames();
 
-  Mat frame;
-  bool grabbed = this->cap.retrieve(frame);
+  Mat srcFrame;
+  bool grabbed = this->cap.retrieve(srcFrame);
 
   if (grabbed) {
-    this->mutex->lock();
-    resize(frame, this->frame, Size(OP_WIDTH, OP_HEIGHT));
-    this->mutex->unlock();
+    this->executeWithFrame([srcFrame](Mat dstFrame) {
+      resize(srcFrame, dstFrame, Size(OP_WIDTH, OP_HEIGHT));
+    });
   }
 }
 
 int VideoSource::getFaceDirectionScore() {
-  mutex->lock();
-  int score = faceDirectionScore(frame);
-  mutex->unlock();
-
-  return score;
+  int *score = new int;
+  this->executeWithFrame([score](Mat frame) -> int {
+    *score = faceDirectionScore(frame);
+  });
+  return *score;
 }
 
 void VideoSource::capture() {

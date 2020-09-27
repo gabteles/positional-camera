@@ -12,6 +12,7 @@
 #include <mutex>
 #include <algorithm>
 #include <iterator>
+#include <functional>
 
 #ifndef CAMERA_CTL_FACE_DETECTION
 #define CAMERA_CTL_FACE_DETECTION
@@ -47,7 +48,6 @@ void debugFaceDetection(cv::Mat frame);
 // Source Ctl
 class IVideoSource {
 public:
-  virtual Mat getFrame() = 0;
   void startCapturing() {
     keepCapturing = true;
 
@@ -56,14 +56,23 @@ public:
         this->capture();
     });
   };
+
   void stopCapturing() { keepCapturing = false; };
+  void executeWithFrame(std::function<void(Mat)> fn) {
+    this->frameMutex.lock();
+    fn(this->getFrame());
+    this->frameMutex.unlock();
+  }
+  virtual Mat getFrame() { return this->frame; }
 
 protected:
   virtual void capture() = 0;
+  Mat frame;
 
 private:
   bool keepCapturing;
   thread *captureThread;
+  std::mutex frameMutex;
 };
 
 class VideoSource : public IVideoSource {
@@ -72,7 +81,6 @@ public:
   void connectSource();
   void rejectPastFrames();
   void readFrame();
-  virtual Mat getFrame();
   int getFaceDirectionScore();
   int getFps();
 
@@ -82,8 +90,6 @@ protected:
 private:
   string name;
   VideoCapture cap;
-  Mat frame;
-  std::mutex *mutex;
   int frontalFaceArea;
   int fps;
   FrameRater *frameRater;
@@ -92,11 +98,11 @@ private:
 class SourceSelector : public IVideoSource {
 public:
   SourceSelector(vector<VideoSource*> *sources);
-  virtual Mat getFrame();
   virtual void startCapturing();
   virtual void stopCapturing();
 
 protected:
+  virtual Mat getFrame();
   virtual void capture();
 
 private:
