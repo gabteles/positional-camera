@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <iterator>
 #include <functional>
+#include <cxxopts.hpp>
 
 #ifndef CAMERA_CTL_HPP
 #define CAMERA_CTL_HPP
