@@ -35,7 +35,7 @@ namespace PositionalCamera {
       if (!frame.cols || !frame.rows)
         return;
 
-      // TODO: cvt should be called when frames are read
+      // TODO: resize frame
       cv::Mat colorCorrectFrame;
       cv::cvtColor(frame, colorCorrectFrame, CV_BGR2YUV_I420);
       write(
