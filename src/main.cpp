@@ -14,14 +14,14 @@ vector<IVideoSource*> *getVideoSourcesFromArgs(int argc, char** argv) {
 int main(int argc, char **argv) {
   vector<IVideoSource*> *sources = getVideoSourcesFromArgs(argc, argv);
 
-  SourceSelector *selector = new SourceSelector(sources);
+  SourceSelector *selector = new SourceSelector(sources, 3);
   selector->startCapturing();
 
   OutputWriter *output = new OutputWriter(
     string(argv[argc - 1]),
     OP_WIDTH,
     OP_HEIGHT,
-    OP_FPS,
+    30,
     selector
   );
 

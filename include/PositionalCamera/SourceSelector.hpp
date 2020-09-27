@@ -4,7 +4,7 @@
 namespace PositionalCamera {
   class SourceSelector : public IVideoSource {
   public:
-    SourceSelector(vector<IVideoSource*> *sources);
+    SourceSelector(vector<IVideoSource*> *sources, int majorityRounds);
     virtual void startCapturing();
     virtual void stopCapturing();
 
@@ -25,6 +25,7 @@ namespace PositionalCamera {
     vector<int> sourceScores;
     vector<int> roundResults;
     FrameRater *frameRater;
+    int majorityRounds;
   };
 };
 

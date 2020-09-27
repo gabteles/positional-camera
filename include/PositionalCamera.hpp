@@ -19,8 +19,6 @@
 
 #define OP_WIDTH 640
 #define OP_HEIGHT 480
-#define OP_FPS 30
-#define OP_ROUNDS 7
 #define OP_COMPARE_MS 500
 
 namespace PositionalCamera {

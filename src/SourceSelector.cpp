@@ -1,10 +1,10 @@
 #include <PositionalCamera.hpp>
 
 namespace PositionalCamera {
-  const int majorityRounds = (OP_ROUNDS / 2);
-  SourceSelector::SourceSelector(vector<IVideoSource *> *sources) {
+  SourceSelector::SourceSelector(vector<IVideoSource *> *sources, int majorityRounds) {
     this->sources = sources;
     this->selectedSource = sources->at(0);
+    this->majorityRounds = majorityRounds;
 
     this->roundResults.resize(sources->size());
     this->sourceScores.resize(sources->size());
