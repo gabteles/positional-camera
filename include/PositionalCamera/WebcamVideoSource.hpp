@@ -11,7 +11,7 @@ namespace PositionalCamera {
     virtual void capture();
     void readFrame();
     void connectSource();
-    void rejectPastFrames();
+    bool rejectPastFrames();
 
   private:
     string name;

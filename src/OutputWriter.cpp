@@ -32,6 +32,9 @@ namespace PositionalCamera {
 
   void OutputWriter::outputFrame() {
     this->source->executeWithFrame([this](Mat frame) {
+      if (!frame.cols || !frame.rows)
+        return;
+
       // TODO: cvt should be called when frames are read
       cv::Mat colorCorrectFrame;
       cv::cvtColor(frame, colorCorrectFrame, CV_BGR2YUV_I420);

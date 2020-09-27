@@ -17,10 +17,6 @@
 #ifndef CAMERA_CTL_HPP
 #define CAMERA_CTL_HPP
 
-#define OP_WIDTH 640
-#define OP_HEIGHT 480
-#define OP_COMPARE_MS 500
-
 namespace PositionalCamera {
   using namespace std;
   using namespace cv;

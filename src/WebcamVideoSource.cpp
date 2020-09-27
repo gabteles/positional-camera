@@ -3,20 +3,23 @@
 namespace PositionalCamera {
   WebcamVideoSource::WebcamVideoSource(string videoId) {
     this->name = videoId;
-    this->frame = Mat(OP_HEIGHT, OP_WIDTH, CV_8UC3);
+    this->frame = Mat();
     this->connectSource();
   }
 
   void WebcamVideoSource::connectSource() {
     this->cap = VideoCapture(this->name);
-    this->cap.set(CAP_PROP_FRAME_WIDTH, OP_WIDTH);
-    this->cap.set(CAP_PROP_FRAME_HEIGHT, OP_HEIGHT);
-    this->fps = this->cap.get(CAP_PROP_FPS);
-    this->frameRater = new FrameRater(this->fps);
-    cout << "[SOURCE] Desired FPS: " << this->fps << endl;
+    this->cap.release();
+    this->cap.open(this->name);
+    if (this->cap.isOpened()) {
+      cout << "[SOURCE] Connected to " << this->name << endl;
+      this->fps = (int)this->cap.get(CAP_PROP_FPS);
+      this->frameRater = new FrameRater(this->fps);
+      cout << "[SOURCE] Desired FPS: " << this->fps << endl;
+    }
   }
 
-  void WebcamVideoSource::rejectPastFrames() {
+  bool WebcamVideoSource::rejectPastFrames() {
     using clock = chrono::system_clock;
     auto startTime = clock::now();
     double currentFps = 0;
@@ -26,6 +29,8 @@ namespace PositionalCamera {
       currentFps = (clock::now() - startTime).count() * (1.0f / this->fps);
       grabbed = this->cap.grab();
     }
+
+    return grabbed;
   }
 
   int WebcamVideoSource::getFps() {
@@ -33,27 +38,26 @@ namespace PositionalCamera {
   }
 
   void WebcamVideoSource::readFrame() {
-    this->rejectPastFrames();
+    bool stillOpen = this->rejectPastFrames();
+
+    if (!stillOpen) {
+      this->cap.release();
+      return;
+    }
 
     Mat srcFrame;
-    bool grabbed = this->cap.retrieve(srcFrame);
-
-    if (grabbed) {
-      this->executeWithFrame([srcFrame](Mat dstFrame) {
-        resize(srcFrame, dstFrame, Size(OP_WIDTH, OP_HEIGHT));
-      });
-    }
+    this->cap.retrieve(srcFrame);
+    this->replaceFrame(srcFrame);
   }
 
   void WebcamVideoSource::capture() {
-    this->frameRater->sleep();
-
     if (this->cap.isOpened()) {
+      this->frameRater->sleep();
       this->readFrame();
     } else {
       cout << "[SOURCE] Camera source not connected (" << this->name << "). Reconnecting... " << endl;
+      this_thread::sleep_for(chrono::milliseconds(1000));
       this->connectSource();
-      this_thread::sleep_for(chrono::milliseconds(OP_COMPARE_MS * 10));
     }
   }
 };

@@ -19,6 +19,7 @@ namespace PositionalCamera {
       fn(this->getFrame());
       this->frameMutex.unlock();
     }
+    void replaceFrame(Mat newFrame) { this->frame = newFrame; }
     virtual Mat getFrame() { return this->frame; }
 
   protected:

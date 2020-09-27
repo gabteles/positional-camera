@@ -1,1 +1,2 @@
-- Improve face detection score
+- When camera takes too long to capture frame, ignore it as source
+- Logger class instead of cout

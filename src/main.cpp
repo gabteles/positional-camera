@@ -19,8 +19,8 @@ int main(int argc, char **argv) {
 
   OutputWriter *output = new OutputWriter(
     string(argv[argc - 1]),
-    OP_WIDTH,
-    OP_HEIGHT,
+    640,
+    480,
     30,
     selector
   );

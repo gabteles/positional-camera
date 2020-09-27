@@ -5,6 +5,9 @@ namespace PositionalCamera {
   CascadeClassifier ProfileFaceClassifier("./haarcascade_profileface.xml");
 
   int FaceDetector::evaluate(Mat frame) {
+    if (!frame.cols || !frame.rows)
+      return INT_MIN;
+
     FrameFaces faces = identifyFaces(frame);
     int frontalConfidence = getLargestFaceConfidence(faces.frontal);
     int profileConfidence = getLargestFaceConfidence(faces.profile);

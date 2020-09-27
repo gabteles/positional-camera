@@ -2,7 +2,7 @@
 
 namespace PositionalCamera {
   FrameRater::FrameRater(int fps) {
-    this->timeBetweenFrames = chrono::duration<double, micro>(1000000 / fps);
+    this->timeBetweenFrames = chrono::duration<int, micro>(1000000 / fps);
     this->tp = chrono::steady_clock::now();
   }
 
