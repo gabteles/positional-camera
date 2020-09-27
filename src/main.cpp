@@ -1,4 +1,6 @@
-#include <camera_ctl.hpp>
+#include <PositionalCamera.hpp>
+
+using namespace PositionalCamera;
 
 vector<IVideoSource*> *getVideoSourcesFromArgs(int argc, char** argv) {
   vector<IVideoSource*> *sources = new vector<IVideoSource*>;
